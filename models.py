@@ -1,21 +1,28 @@
 import os
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from server import login_manager
 
 db = SQLAlchemy()
 
-class User(db.Model):
+class User(db.Model, UserMixin):
 
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key = True, autoincrement = True)
-    username = db.Column(db.VARCHAR, unique = True, nullable = False)
-    password = db.Column(db.VARCHAR, nullable = False)
+    username = db.Column(db.String(64), unique = True, nullable = False)
+    password_hash = db.Column(db.String(128), nullable = False)
 
     contacts = db.relationship("Contact", backref = "contact", lazy = True)
 
     def __init__(self, username, password):
         self.username = username
-        self.password = password
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class Contact(db.Model):
 
@@ -23,13 +30,13 @@ class Contact(db.Model):
 
     id = db.Column(db.Integer, primary_key = True, autoincrement = True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable = False)
-    name = db.Column(db.VARCHAR(40), nullable = False)
+    name = db.Column(db.String(40), nullable = False)
     contact_type = db.Column(db.String(40), nullable = False)
     email = db.Column(db.VARCHAR(60))
-    work_phone = db.Column(db.VARCHAR(11))
-    mobile_phone = db.Column(db.VARCHAR(11))
+    work_phone = db.Column(db.Integer())
+    mobile_phone = db.Column(db.Integer())
     address = db.Column(db.VARCHAR(60))
-    company = db.Column(db.VARCHAR(60))
+    company = db.Column(db.String(60))
 
     def __init__(self, user_id, name, contact_type, email, work_phone, mobile_phone, address, company):
         self.user_id = user_id
@@ -59,7 +66,8 @@ def connect_to_db(flask_app):
     flask_app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.app = flask_app
     db.init_app(flask_app)
-    
+
+
 if __name__ == "__main__":
     from flask import Flask
     app = Flask(__name__)
